@@ -1,0 +1,50 @@
+name: Publish Independent Tools Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'DeveloperHub_Website.zip'
+      - 'google*.html'
+      - '.github/workflows/publish-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: independent-tools-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout website repository
+        uses: actions/checkout@v4
+      - name: Expand public website and Search Console verification files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f DeveloperHub_Website.zip
+          mkdir -p _site
+          unzip -q DeveloperHub_Website.zip -d _site
+          test -f _site/index.html
+          test -f _site/security-backup/privacy.html
+          for file in google*.html; do
+            if [[ -f "$file" ]]; then cp "$file" _site/; fi
+          done
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site to GitHub Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
